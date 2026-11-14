@@ -4,8 +4,8 @@ import { autoRegisterHMRPlugin } from '../src/auto-hmr-plugin'
 
 function transform(code: string, id = '/app/stores/counter.js') {
   const plugin = autoRegisterHMRPlugin('/app')
-  return plugin.transform.call(
-    { parse: parseAst } as ThisParameterType<typeof plugin.transform>,
+  return plugin.transform.handler.call(
+    { parse: parseAst } as ThisParameterType<typeof plugin.transform.handler>,
     code,
     id
   )
@@ -47,5 +47,17 @@ describe('automatic store HMR', () => {
         '/other/store.js'
       )
     ).toBeUndefined()
+  })
+
+  it('filters out modules the handler skips', () => {
+    const { filter } = autoRegisterHMRPlugin('/my.app').transform
+
+    expect(filter.id.test('/my.app/stores/counter.js')).toBe(true)
+    expect(filter.id.test('/myxapp/stores/counter.js')).toBe(false)
+    expect(filter.id.test('\0virtual:/my.app/stores/counter.js')).toBe(false)
+    expect(filter.code).toEqual({
+      include: 'defineStore',
+      exclude: 'acceptHMRUpdate',
+    })
   })
 })
